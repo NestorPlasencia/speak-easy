@@ -55,7 +55,7 @@ export default function SpeakEasyApp() {
     error: recorderError,
     resetRecording,
     mediaRecorderRef
-  } = useMediaRecorder('audio/wav'); // Prefer wav for wider compatibility with AI if possible
+  } = useMediaRecorder('audio/wav');
 
   // Pronunciation Feedback
   const [feedback, setFeedback] = useState<ImprovePronunciationOutput | null>(null);
@@ -75,7 +75,6 @@ export default function SpeakEasyApp() {
   }, [recorderError, toast]);
 
   useEffect(() => {
-    // Reset feedback when sentence changes
     setFeedback(null);
     resetRecording();
   }, [currentSentenceIndex, sentences, resetRecording]);
@@ -112,7 +111,6 @@ export default function SpeakEasyApp() {
     }
     const segmented = segmentSentences(textToProcess);
     if (segmented.length === 0 && textToProcess.trim().length > 0) {
-        // if segmentation results in empty but there was text, treat the whole text as one sentence
         setSentences([textToProcess.trim()]);
     } else {
         setSentences(segmented);
@@ -126,15 +124,15 @@ export default function SpeakEasyApp() {
   }, [inputText, resetRecording, toast]);
 
   const navigateSentence = (direction: 'next' | 'prev') => {
-    cancelSpeech(); // Stop TTS if speaking
-    if (isRecording) stopRecording(); // Stop recording if active
+    cancelSpeech();
+    if (isRecording) stopRecording();
 
     setCurrentSentenceIndex(prev => {
       const newIndex = direction === 'next' ? prev + 1 : prev - 1;
       if (newIndex >= 0 && newIndex < sentences.length) {
         return newIndex;
       }
-      return prev; // Stay on current if out of bounds
+      return prev;
     });
   };
 
@@ -146,16 +144,15 @@ export default function SpeakEasyApp() {
       return;
     }
     
-    setCurrentSpokenWordIndex(-1); // Reset before speaking
+    setCurrentSpokenWordIndex(-1);
     speak(
       currentSentence,
       currentVoiceURI,
-      (event: SpeechSynthesisEvent) => { // onBoundary
+      (event: SpeechSynthesisEvent) => {
         if (event.name === 'word') {
-           // Find which word it is based on charIndex
            let cumulativeLength = 0;
            for (let i = 0; i < currentSentenceWords.length; i++) {
-             cumulativeLength += currentSentenceWords[i].length + 1; // +1 for space
+             cumulativeLength += currentSentenceWords[i].length + 1;
              if (event.charIndex < cumulativeLength) {
                setCurrentSpokenWordIndex(i);
                break;
@@ -163,10 +160,20 @@ export default function SpeakEasyApp() {
            }
         }
       },
-      () => { // onEnd
+      () => {
         setCurrentSpokenWordIndex(-1);
       }
     );
+  };
+
+  const handleListenWord = (wordToSpeak: string) => {
+    if (!currentSentence || !ttsSupported) return;
+    
+    if (isSpeakingTTS) {
+      cancelSpeech();
+    }
+    setCurrentSpokenWordIndex(-1); 
+    speak(wordToSpeak, currentVoiceURI);
   };
   
   const handleRecordToggle = () => {
@@ -174,8 +181,8 @@ export default function SpeakEasyApp() {
       stopRecording();
       toast({ title: "Recording Stopped" });
     } else {
-      resetRecording(); // Clear previous recording before starting new one
-      setFeedback(null); // Clear previous feedback
+      resetRecording();
+      setFeedback(null);
       startRecording().then(() => {
         toast({ title: "Recording Started" });
       }).catch(e => {
@@ -224,7 +231,7 @@ export default function SpeakEasyApp() {
     const incorrectSet = new Set(feedback.incorrectWords.map(w => w.toLowerCase()));
 
     return words.map(word => {
-      const lowerWord = word.toLowerCase().replace(/[.,!?]/g, ''); // Normalize word
+      const lowerWord = word.toLowerCase().replace(/[.,!?]/g, '');
       if (correctSet.has(lowerWord)) return { word, type: 'correct' };
       if (incorrectSet.has(lowerWord)) return { word, type: 'incorrect' };
       return { word, type: 'default' };
@@ -292,13 +299,21 @@ export default function SpeakEasyApp() {
             <CardContent>
               <div className="text-xl md:text-2xl p-4 border rounded-md min-h-[6rem] flex flex-wrap items-center justify-center text-center bg-card-foreground/5">
                 {highlightedWords.map((item, index) => (
-                  <span key={index} className={`
-                    inline-block break-words 
-                    ${item.type === 'correct' ? 'text-[hsl(var(--correct-word-foreground))] bg-[hsl(var(--correct-word-background)/0.3)] px-1 rounded' : ''}
-                    ${item.type === 'incorrect' ? 'text-[hsl(var(--incorrect-word-foreground))] bg-[hsl(var(--incorrect-word-background)/0.3)] px-1 rounded line-through' : ''}
-                    ${item.type === 'current' ? 'bg-[hsl(var(--current-word-highlight))] px-1 rounded font-bold' : ''}
-                    mr-1
-                  `}>
+                  <span 
+                    key={index} 
+                    className={`
+                      inline-block break-words cursor-pointer hover:opacity-75 focus:outline-none focus:ring-1 focus:ring-primary rounded
+                      ${item.type === 'correct' ? 'text-[hsl(var(--correct-word-foreground))] bg-[hsl(var(--correct-word-background)/0.3)] px-1' : ''}
+                      ${item.type === 'incorrect' ? 'text-[hsl(var(--incorrect-word-foreground))] bg-[hsl(var(--incorrect-word-background)/0.3)] px-1 line-through' : ''}
+                      ${item.type === 'current' ? 'bg-[hsl(var(--current-word-highlight))] px-1 font-bold' : ''}
+                      mr-1 my-0.5 px-0.5
+                    `}
+                    onClick={() => handleListenWord(item.word)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleListenWord(item.word); }}}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Listen to word: ${item.word}`}
+                  >
                     {item.word}
                   </span>
                 ))}
@@ -314,17 +329,17 @@ export default function SpeakEasyApp() {
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row gap-2 justify-center">
               <Button onClick={handleListen} disabled={!currentSentence || isRecording} className="w-full sm:w-auto">
-                {isSpeakingTTS ? <Square className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
-                {isSpeakingTTS ? 'Stop Listening' : 'Listen'}
+                {isSpeakingTTS && currentSpokenWordIndex !== -1 ? <Square className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+                {isSpeakingTTS && currentSpokenWordIndex !== -1 ? 'Stop Listening' : 'Listen to Sentence'}
               </Button>
-              <Button onClick={handleRecordToggle} variant={isRecording ? "destructive" : "default"} className="w-full sm:w-auto" disabled={isSpeakingTTS}>
+              <Button onClick={handleRecordToggle} variant={isRecording ? "destructive" : "default"} className="w-full sm:w-auto" disabled={isSpeakingTTS && currentSpokenWordIndex !== -1}>
                 {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
                 {isRecording ? 'Stop Recording' : 'Record Voice'}
               </Button>
             </CardFooter>
             {isRecording && (
                 <div className="p-4">
-                    <Progress value={undefined} className="w-full animate-pulse" /> {/* Indeterminate progress for recording */}
+                    <Progress value={undefined} className="w-full animate-pulse" />
                     <p className="text-sm text-center text-muted-foreground mt-2">Recording in progress...</p>
                 </div>
             )}
@@ -341,7 +356,6 @@ export default function SpeakEasyApp() {
                 <div className="space-y-2">
                   <p className="font-medium">Your Last Recording:</p>
                   <audio ref={audioPlayerRef} src={audioUrl} controls className="w-full" />
-                  {/* Button to play using PlayCircle icon is an alternative if native controls are not desired */}
                 </div>
               )}
 
@@ -408,3 +422,4 @@ export default function SpeakEasyApp() {
     </div>
   );
 }
+
