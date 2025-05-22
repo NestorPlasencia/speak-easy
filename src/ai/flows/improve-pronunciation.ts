@@ -25,7 +25,7 @@ const ImprovePronunciationOutputSchema = z.object({
   feedback: z.string().describe('Feedback on the user\'s pronunciation.'),
   correctWords: z.array(z.string()).describe('Words that were pronounced correctly.'),
   incorrectWords: z.array(z.string()).describe('Words that were not pronounced correctly.'),
-  accuracyPercentage: z.number().min(0).max(100).describe('The overall pronunciation accuracy percentage (0-100), calculated as (correct words / total words) * 100, rounded to the nearest whole number.'),
+  accuracyPercentage: z.number().min(0).max(100).describe('The overall pronunciation accuracy percentage (0-100), calculated as (number of correct words / total number of words in sentence) * 100, rounded to the nearest whole number.'),
 });
 export type ImprovePronunciationOutput = z.infer<typeof ImprovePronunciationOutputSchema>;
 
@@ -44,10 +44,20 @@ User's audio recording: {{media url=userRecording}}
 
 Please perform the following steps:
 1.  Carefully listen to the user's recording and compare it against the provided sentence.
-2.  Identify each word in the original sentence that the user pronounced correctly.
-3.  Identify each word in the original sentence that the user pronounced incorrectly or missed. Punctuation attached to words should be considered part of the word for this analysis (e.g. if "end." is in the sentence, "end." is the token to evaluate).
-4.  Provide concise, constructive, overall feedback on the user's pronunciation.
-5.  Calculate an overall accuracy percentage. This should be (Number of correctly pronounced words / Total number of words in the original sentence) * 100. Round this percentage to the nearest whole number. Ensure the value is between 0 and 100. If the sentence has no words, accuracy is 0.
+2.  Tokenize the original sentence \`{{{sentence}}}\` into words. Treat words as space-separated tokens. Punctuation attached to a word (e.g., "fox.") should be considered part of that word token.
+3.  For each tokenized word from the original sentence:
+    a.  Determine if the user pronounced it correctly.
+    b.  Add correctly pronounced words to the \`correctWords\` array.
+    c.  Add incorrectly pronounced or missed words to the \`incorrectWords\` array.
+    d.  Ensure that every tokenized word from the original sentence appears in *either* the \`correctWords\` or \`incorrectWords\` array, but not both.
+4.  Provide concise, constructive, overall feedback on the user's pronunciation for the \`feedback\` field.
+5.  Calculate the \`accuracyPercentage\`:
+    a.  Let \`NumCorrect\` be the total number of words in the \`correctWords\` array.
+    b.  Let \`NumIncorrect\` be the total number of words in the \`incorrectWords\` array.
+    c.  Let \`TotalWordsInSentence\` be \`NumCorrect + NumIncorrect\`.
+    d.  If \`TotalWordsInSentence\` is 0 (this might happen if the original sentence was empty or contained no processable words), the \`accuracyPercentage\` is 0.
+    e.  Otherwise, calculate \`(NumCorrect / TotalWordsInSentence) * 100\`.
+    f.  Round the result to the nearest whole number. This is the \`accuracyPercentage\`. Ensure it is a number between 0 and 100.
 
 Return your analysis in the following JSON format. Ensure the output is valid JSON:
 {
@@ -57,10 +67,12 @@ Return your analysis in the following JSON format. Ensure the output is valid JS
   "accuracyPercentage": number // The calculated accuracy percentage (0-100)
 }
 
-Example:
+Example for accuracy calculation:
 Sentence: "The quick brown fox jumps."
 User pronounces "The", "quick", "jumps." correctly. "brown" and "fox" are incorrect.
-Total words = 5. Correct words = 3.
+Based on analysis, \`correctWords\` would be \`["The", "quick", "jumps."]\` (so NumCorrect = 3)
+and \`incorrectWords\` would be \`["brown", "fox"]\` (so NumIncorrect = 2).
+TotalWordsInSentence = NumCorrect + NumIncorrect = 3 + 2 = 5.
 Calculation: (3 / 5) * 100 = 60.
 Output: { ..., "accuracyPercentage": 60, ... }
 
@@ -82,3 +94,4 @@ const improvePronunciationFlow = ai.defineFlow(
     return output!;
   }
 );
+
