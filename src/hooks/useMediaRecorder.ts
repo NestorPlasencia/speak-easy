@@ -1,3 +1,4 @@
+
 // src/hooks/useMediaRecorder.ts
 "use client";
 
@@ -21,6 +22,7 @@ const useMediaRecorder = (mimeType: string = 'audio/webm'): UseMediaRecorderRetu
   const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const currentAudioUrlRef = useRef<string | null>(null); // Added ref for stable reset
 
   const requestMediaPermissions = useCallback(async () => {
     if (typeof window === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -51,7 +53,6 @@ const useMediaRecorder = (mimeType: string = 'audio/webm'): UseMediaRecorderRetu
     if (!stream) return;
 
     try {
-      // Check for MediaRecorder support and supported types
       if (typeof MediaRecorder === 'undefined') {
         setError('MediaRecorder API not supported in this browser.');
         return;
@@ -60,14 +61,13 @@ const useMediaRecorder = (mimeType: string = 'audio/webm'): UseMediaRecorderRetu
       let options = { mimeType };
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         console.warn(`${mimeType} is not supported. Trying default.`);
-        options = {} as any; // Use browser default by passing empty options or a known fallback
-        if (MediaRecorder.isTypeSupported('audio/wav')) { // common fallback
+        options = {} as any; 
+        if (MediaRecorder.isTypeSupported('audio/wav')) {
             options = { mimeType: 'audio/wav' };
         } else if (MediaRecorder.isTypeSupported('audio/ogg; codecs=opus')) {
              options = { mimeType: 'audio/ogg; codecs=opus' };
         }
       }
-
 
       const recorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = recorder;
@@ -84,8 +84,8 @@ const useMediaRecorder = (mimeType: string = 'audio/webm'): UseMediaRecorderRetu
         setAudioBlob(newAudioBlob);
         const newAudioUrl = URL.createObjectURL(newAudioBlob);
         setAudioUrl(newAudioUrl);
+        currentAudioUrlRef.current = newAudioUrl; // Update ref
         setIsRecording(false);
-        // Stop all tracks on the stream to turn off the mic indicator
         stream.getTracks().forEach(track => track.stop());
       };
       
@@ -112,31 +112,38 @@ const useMediaRecorder = (mimeType: string = 'audio/webm'): UseMediaRecorderRetu
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
-      // Tracks are stopped in onstop handler
     }
   }, []);
   
   const resetRecording = useCallback(() => {
     setAudioBlob(null);
-    if (audioUrl) {
-      URL.revokeObjectURL(audioUrl);
+    if (currentAudioUrlRef.current) { // Use ref for revoking
+      URL.revokeObjectURL(currentAudioUrlRef.current);
     }
-    setAudioUrl(null);
+    setAudioUrl(null); // Clear state
+    currentAudioUrlRef.current = null; // Clear ref
     setError(null);
     audioChunksRef.current = [];
-  }, [audioUrl]);
+  }, []); // Empty dependency array makes it stable
 
   useEffect(() => {
-    // Cleanup URL object when component unmounts or audioUrl changes
+    // This effect handles cleanup if the component unmounts with an active audioUrl state,
+    // or if audioUrl changes for reasons outside of resetRecording's control.
+    // It uses the audioUrl state directly, as it's cleaning up based on that state's lifecycle.
+    let urlToRevokeFromState: string | null = null;
+    if (audioUrl) {
+        urlToRevokeFromState = audioUrl;
+    }
     return () => {
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
+      if (urlToRevokeFromState) {
+        // Check if this URL is still the one in the ref, to avoid double-revocation
+        // if resetRecording was already called. However, revoking multiple times is usually safe.
+        URL.revokeObjectURL(urlToRevokeFromState);
       }
     };
-  }, [audioUrl]);
+  }, [audioUrl]); // This effect still depends on audioUrl state for its own cleanup logic
 
   return { startRecording, stopRecording, audioBlob, audioUrl, isRecording, error, resetRecording, mediaRecorderRef };
 };
 
 export default useMediaRecorder;
-
