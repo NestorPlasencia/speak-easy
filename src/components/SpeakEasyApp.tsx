@@ -290,9 +290,10 @@ export default function SpeakEasyApp() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-xl md:text-2xl p-4 border rounded-md min-h-[6rem] flex items-center justify-center text-center bg-card-foreground/5">
+              <div className="text-xl md:text-2xl p-4 border rounded-md min-h-[6rem] flex flex-wrap items-center justify-center text-center bg-card-foreground/5">
                 {highlightedWords.map((item, index) => (
                   <span key={index} className={`
+                    inline-block break-words 
                     ${item.type === 'correct' ? 'text-[hsl(var(--correct-word-foreground))] bg-[hsl(var(--correct-word-background)/0.3)] px-1 rounded' : ''}
                     ${item.type === 'incorrect' ? 'text-[hsl(var(--incorrect-word-foreground))] bg-[hsl(var(--incorrect-word-background)/0.3)] px-1 rounded line-through' : ''}
                     ${item.type === 'current' ? 'bg-[hsl(var(--current-word-highlight))] px-1 rounded font-bold' : ''}
