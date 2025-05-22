@@ -66,7 +66,8 @@ export default function SpeakEasyApp() {
   const audioPlayerRef = useRef<HTMLAudioElement>(null);
 
   const currentSentence = sentences[currentSentenceIndex] || '';
-  const currentSentenceWords = currentSentence.split(/\s+/);
+  const currentSentenceWords = currentSentence.split(/\s+/).filter(word => word.length > 0);
+
 
   useEffect(() => {
     if (recorderError) {
@@ -113,7 +114,7 @@ export default function SpeakEasyApp() {
     if (segmented.length === 0 && textToProcess.trim().length > 0) {
         setSentences([textToProcess.trim()]);
     } else {
-        setSentences(segmented);
+        setSentences(segmented.map(s => s.trim()).filter(s => s.length > 0));
     }
     setCurrentSentenceIndex(0);
     setFeedback(null);
@@ -152,7 +153,7 @@ export default function SpeakEasyApp() {
         if (event.name === 'word') {
            let cumulativeLength = 0;
            for (let i = 0; i < currentSentenceWords.length; i++) {
-             cumulativeLength += currentSentenceWords[i].length + 1; // +1 for space
+             cumulativeLength += currentSentenceWords[i].length + (i < currentSentenceWords.length -1 ? 1: 0) ; // +1 for space, but not for the last word
              if (event.charIndex < cumulativeLength) {
                setCurrentSpokenWordIndex(i);
                break;
@@ -172,9 +173,7 @@ export default function SpeakEasyApp() {
     if (isSpeakingTTS) {
       cancelSpeech();
     }
-    // Don't set currentSpokenWordIndex for single word playback to avoid visual confusion
-    // or find a way to highlight only the clicked word if desired. For now, simpler.
-    speak(wordToSpeak.replace(/[.,!?]$/, ''), currentVoiceURI); // Clean punctuation for TTS if desired
+    speak(wordToSpeak.replace(/[.,!?]$/, ''), currentVoiceURI);
   };
   
   const handleRecordToggle = () => {
@@ -223,27 +222,42 @@ export default function SpeakEasyApp() {
             type: index === currentSpokenWordIndex ? 'current' : 'default',
         }));
     }
-
-    if (!feedback) {
+    
+    if (!feedback || !feedback.correctWords || !feedback.incorrectWords) {
       return words.map(word => ({ word, type: 'default' }));
     }
 
-    const correctSet = new Set(feedback.correctWords.map(w => w.toLowerCase()));
-    const incorrectSet = new Set(feedback.incorrectWords.map(w => w.toLowerCase()));
+    // Normalize words from feedback for comparison: trim and convert to lowercase.
+    // The AI is instructed to return words with original punctuation, so the sets will contain e.g., "word."
+    const correctSet = new Set(feedback.correctWords.map(w => w.trim().toLowerCase()));
+    const incorrectSet = new Set(feedback.incorrectWords.map(w => w.trim().toLowerCase()));
 
-    return words.map(word => {
-      // Normalize word by removing common trailing punctuation for comparison, but display original
-      const comparableWord = word.toLowerCase().replace(/[.,!?]$/, '');
-      if (correctSet.has(comparableWord) || correctSet.has(word.toLowerCase())) return { word, type: 'correct' };
-      if (incorrectSet.has(comparableWord) || incorrectSet.has(word.toLowerCase())) return { word, type: 'incorrect' };
-      return { word, type: 'default' };
+    return words.map(originalWord => {
+      const wordForDisplay = originalWord; // Keep original for display
+
+      // For comparison, normalize the sentence word: trim, lowercase.
+      // Version 1: with trailing punctuation (e.g., "word.")
+      const sentenceWordWithPunctLower = originalWord.trim().toLowerCase();
+      // Version 2: without trailing punctuation (e.g., "word")
+      const sentenceWordCleanLower = originalWord.trim().toLowerCase().replace(/[.,!?]$/, '');
+
+      // Check against the sets
+      // AI is asked to return words with punctuation, so sentenceWordWithPunctLower is the primary match target.
+      // sentenceWordCleanLower is a fallback if AI cleans punctuation before returning.
+      if (correctSet.has(sentenceWordWithPunctLower) || correctSet.has(sentenceWordCleanLower)) {
+        return { word: wordForDisplay, type: 'correct' };
+      }
+      if (incorrectSet.has(sentenceWordWithPunctLower) || incorrectSet.has(sentenceWordCleanLower)) {
+        return { word: wordForDisplay, type: 'incorrect' };
+      }
+      return { word: wordForDisplay, type: 'default' };
     });
   };
   
   const highlightedWords = getHighlightedSentence();
 
   const getAccuracyColor = (percentage: number | undefined): string => {
-    if (percentage === undefined) return 'hsl(var(--foreground))'; // Default color
+    if (percentage === undefined) return 'hsl(var(--foreground))'; 
     if (percentage >= 75) return 'hsl(var(--accent))'; 
     if (percentage >= 50) return 'hsl(var(--primary))'; 
     return 'hsl(var(--destructive))';
@@ -348,7 +362,7 @@ export default function SpeakEasyApp() {
             </CardFooter>
             {isRecording && (
                 <div className="p-4">
-                    <Progress value={undefined} className="w-full animate-pulse" /> {/* Using undefined for indeterminate */}
+                    <Progress value={undefined} className="w-full animate-pulse" /> 
                     <p className="text-sm text-center text-muted-foreground mt-2">Recording in progress...</p>
                 </div>
             )}
@@ -361,14 +375,14 @@ export default function SpeakEasyApp() {
               <CardTitle>3. Your Recording & Feedback</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {audioUrl && !isRecording && ( // Only show if not currently recording
+              {audioUrl && !isRecording && ( 
                 <div className="space-y-2">
                   <p className="font-medium">Your Last Recording:</p>
                   <audio ref={audioPlayerRef} src={audioUrl} controls className="w-full" />
                 </div>
               )}
 
-              {audioBlob && !feedback && !isLoadingAiFeedback && !isRecording && ( // Only show if not currently recording
+              {audioBlob && !feedback && !isLoadingAiFeedback && !isRecording && ( 
                 <Button onClick={handleAnalyzePronunciation} className="w-full" disabled={isRecording}>
                   <Activity className="mr-2 h-4 w-4" /> Analyze Pronunciation
                 </Button>
@@ -408,7 +422,7 @@ export default function SpeakEasyApp() {
 
                   <div>
                     <h5 className="font-medium">Correctly Pronounced Words:</h5>
-                    {feedback.correctWords.length > 0 ? (
+                    {feedback.correctWords && feedback.correctWords.length > 0 ? (
                       <p className="text-sm" style={{color: 'hsl(var(--accent-foreground))'}}>{feedback.correctWords.join(', ')}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">None identified.</p>
@@ -416,7 +430,7 @@ export default function SpeakEasyApp() {
                   </div>
                   <div>
                     <h5 className="font-medium">Words to Practice:</h5>
-                     {feedback.incorrectWords.length > 0 ? (
+                     {feedback.incorrectWords && feedback.incorrectWords.length > 0 ? (
                       <p className="text-sm" style={{color: 'hsl(var(--destructive))'}}>{feedback.incorrectWords.join(', ')}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">Great job, no major mispronunciations identified by the AI!</p>
@@ -443,3 +457,4 @@ export default function SpeakEasyApp() {
     </div>
   );
 }
+
