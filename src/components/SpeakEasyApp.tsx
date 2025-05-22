@@ -152,7 +152,7 @@ export default function SpeakEasyApp() {
         if (event.name === 'word') {
            let cumulativeLength = 0;
            for (let i = 0; i < currentSentenceWords.length; i++) {
-             cumulativeLength += currentSentenceWords[i].length + 1;
+             cumulativeLength += currentSentenceWords[i].length + 1; // +1 for space
              if (event.charIndex < cumulativeLength) {
                setCurrentSpokenWordIndex(i);
                break;
@@ -172,8 +172,9 @@ export default function SpeakEasyApp() {
     if (isSpeakingTTS) {
       cancelSpeech();
     }
-    setCurrentSpokenWordIndex(-1); 
-    speak(wordToSpeak, currentVoiceURI);
+    // Don't set currentSpokenWordIndex for single word playback to avoid visual confusion
+    // or find a way to highlight only the clicked word if desired. For now, simpler.
+    speak(wordToSpeak.replace(/[.,!?]$/, ''), currentVoiceURI); // Clean punctuation for TTS if desired
   };
   
   const handleRecordToggle = () => {
@@ -231,14 +232,22 @@ export default function SpeakEasyApp() {
     const incorrectSet = new Set(feedback.incorrectWords.map(w => w.toLowerCase()));
 
     return words.map(word => {
-      const lowerWord = word.toLowerCase().replace(/[.,!?]/g, '');
-      if (correctSet.has(lowerWord)) return { word, type: 'correct' };
-      if (incorrectSet.has(lowerWord)) return { word, type: 'incorrect' };
+      // Normalize word by removing common trailing punctuation for comparison, but display original
+      const comparableWord = word.toLowerCase().replace(/[.,!?]$/, '');
+      if (correctSet.has(comparableWord) || correctSet.has(word.toLowerCase())) return { word, type: 'correct' };
+      if (incorrectSet.has(comparableWord) || incorrectSet.has(word.toLowerCase())) return { word, type: 'incorrect' };
       return { word, type: 'default' };
     });
   };
   
   const highlightedWords = getHighlightedSentence();
+
+  const getAccuracyColor = (percentage: number | undefined): string => {
+    if (percentage === undefined) return 'hsl(var(--foreground))'; // Default color
+    if (percentage >= 75) return 'hsl(var(--accent))'; 
+    if (percentage >= 50) return 'hsl(var(--primary))'; 
+    return 'hsl(var(--destructive))';
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8 bg-background text-foreground">
@@ -339,7 +348,7 @@ export default function SpeakEasyApp() {
             </CardFooter>
             {isRecording && (
                 <div className="p-4">
-                    <Progress value={undefined} className="w-full animate-pulse" />
+                    <Progress value={undefined} className="w-full animate-pulse" /> {/* Using undefined for indeterminate */}
                     <p className="text-sm text-center text-muted-foreground mt-2">Recording in progress...</p>
                 </div>
             )}
@@ -352,14 +361,14 @@ export default function SpeakEasyApp() {
               <CardTitle>3. Your Recording & Feedback</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {audioUrl && (
+              {audioUrl && !isRecording && ( // Only show if not currently recording
                 <div className="space-y-2">
                   <p className="font-medium">Your Last Recording:</p>
                   <audio ref={audioPlayerRef} src={audioUrl} controls className="w-full" />
                 </div>
               )}
 
-              {audioBlob && !feedback && !isLoadingAiFeedback && (
+              {audioBlob && !feedback && !isLoadingAiFeedback && !isRecording && ( // Only show if not currently recording
                 <Button onClick={handleAnalyzePronunciation} className="w-full" disabled={isRecording}>
                   <Activity className="mr-2 h-4 w-4" /> Analyze Pronunciation
                 </Button>
@@ -385,10 +394,22 @@ export default function SpeakEasyApp() {
                   <h4 className="font-semibold text-lg">Pronunciation Feedback:</h4>
                   <p className="text-sm p-3 bg-accent/20 rounded-md border border-accent">{feedback.feedback}</p>
                   
+                  {feedback.accuracyPercentage !== undefined && (
+                    <div className="mt-3 py-2">
+                      <h5 className="font-medium">Overall Accuracy:</h5>
+                      <p 
+                        className="text-2xl font-bold" 
+                        style={{ color: getAccuracyColor(feedback.accuracyPercentage) }}
+                      >
+                        {feedback.accuracyPercentage.toFixed(0)}%
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <h5 className="font-medium">Correctly Pronounced Words:</h5>
                     {feedback.correctWords.length > 0 ? (
-                      <p className="text-sm text-green-700 dark:text-green-400">{feedback.correctWords.join(', ')}</p>
+                      <p className="text-sm" style={{color: 'hsl(var(--accent-foreground))'}}>{feedback.correctWords.join(', ')}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">None identified.</p>
                     )}
@@ -396,7 +417,7 @@ export default function SpeakEasyApp() {
                   <div>
                     <h5 className="font-medium">Words to Practice:</h5>
                      {feedback.incorrectWords.length > 0 ? (
-                      <p className="text-sm text-orange-700 dark:text-orange-400">{feedback.incorrectWords.join(', ')}</p>
+                      <p className="text-sm" style={{color: 'hsl(var(--destructive))'}}>{feedback.incorrectWords.join(', ')}</p>
                     ) : (
                       <p className="text-sm text-muted-foreground">Great job, no major mispronunciations identified by the AI!</p>
                     )}
@@ -422,4 +443,3 @@ export default function SpeakEasyApp() {
     </div>
   );
 }
-
