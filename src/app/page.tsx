@@ -1,3 +1,5 @@
-export default function Home() {
-  return <></>;
+import SpeakEasyApp from "@/components/SpeakEasyApp";
+
+export default function HomePage() {
+  return <SpeakEasyApp />;
 }

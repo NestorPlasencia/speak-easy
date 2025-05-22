@@ -8,73 +8,82 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    --background: 207 88% 94%; /* Very Light Blue #E3F2FD */
+    --foreground: 210 10% 23%; /* Dark Gray for text */
+
+    --muted: 207 30% 88%;
+    --muted-foreground: 210 10% 45%;
+
+    --popover: 207 88% 98%; /* Lighter than background for popovers */
+    --popover-foreground: 210 10% 23%;
+
+    --card: 207 88% 96%; /* Slightly darker than background for cards */
+    --card-foreground: 210 10% 23%;
+
+    --border: 207 20% 80%;
+    --input: 207 20% 85%;
+
+    --primary: 207 87% 68%; /* Muted Blue #64B5F6 */
+    --primary-foreground: 210 60% 98%; /* White/very light for text on primary */
+
+    --secondary: 207 50% 80%;
+    --secondary-foreground: 210 10% 23%;
+
+    --accent: 94 50% 70%; /* Vibrant Green #9CCC65 */
+    --accent-foreground: 90 60% 15%; /* Dark green for text on accent */
+
+    --destructive: 0 70% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+
+    --ring: 207 87% 68%;
+
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Custom colors for word highlighting */
+    --correct-word-background: 94 50% 70%; /* Green accent for correct words */
+    --correct-word-foreground: 90 60% 15%;
+    --incorrect-word-background: 36 100% 70%; /* Muted orange #FFB74D (lighter than #FFA726 for better contrast) */
+    --incorrect-word-foreground: 30 80% 10%;
+    --current-word-highlight: 207 87% 80%; /* Lighter blue for current word during TTS */
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Dark theme adjustments (keeping it consistent with the light theme's hue but darker) */
+    --background: 207 30% 10%;
+    --foreground: 207 10% 85%;
+
+    --muted: 207 20% 20%;
+    --muted-foreground: 207 10% 65%;
+
+    --popover: 207 30% 15%;
+    --popover-foreground: 207 10% 85%;
+
+    --card: 207 30% 12%;
+    --card-foreground: 207 10% 85%;
+
+    --border: 207 20% 25%;
+    --input: 207 20% 22%;
+
+    --primary: 207 70% 55%;
+    --primary-foreground: 210 40% 95%;
+
+    --secondary: 207 40% 30%;
+    --secondary-foreground: 207 10% 85%;
+
+    --accent: 94 40% 55%;
+    --accent-foreground: 90 50% 90%;
+
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 95%;
+
+    --ring: 207 70% 55%;
+
+    /* Custom dark theme colors for word highlighting */
+    --correct-word-background: 94 40% 55%;
+    --correct-word-foreground: 90 50% 90%;
+    --incorrect-word-background: 36 70% 50%;
+    --incorrect-word-foreground: 30 70% 90%;
+    --current-word-highlight: 207 70% 40%;
   }
 }
 
